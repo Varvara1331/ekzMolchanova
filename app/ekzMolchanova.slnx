@@ -1,3 +1,4 @@
 <Solution>
+  <Project Path="ekzApp.Tests/ekzApp.Tests.csproj" Id="150676de-c622-41db-9081-cfeec42ecc32" />
   <Project Path="ekzApp/ekzApp.csproj" />
 </Solution>
