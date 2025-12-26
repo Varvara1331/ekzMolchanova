@@ -41,15 +41,19 @@ while (true)
 
 if (vertices.Count == 0)
 {
-    Console.WriteLine("Нет данных о карте. Завершение.");
+    Console.WriteLine("Нет данных о карте.");
     return;
 }
 
 var vertexList = new List<int>(vertices);
 vertexList.Sort();
 var indexMap = new Dictionary<int, int>();
+var vertexByIndex = new Dictionary<int, int>();
 for (int i = 0; i < vertexList.Count; i++)
+{
     indexMap[vertexList[i]] = i;
+    vertexByIndex[i] = vertexList[i];
+}
 
 int n = vertexList.Count;
 GlobalN.n = n;
@@ -70,3 +74,95 @@ foreach (var (a, b, len) in edges)
 }
 
 double[,] distances = FloydClass.Floyd(adjMatrix);
+
+while (true)
+{
+    Console.Write("Номер первой точки (или 'Q' для выхода): ");
+    string startInput = Console.ReadLine()?.Trim();
+    if (startInput?.Equals("Q", StringComparison.OrdinalIgnoreCase) == true) break;
+
+    Console.Write("Номер второй точки (или 'Q' для выхода): ");
+    string endInput = Console.ReadLine()?.Trim();
+    if (endInput?.Equals("Q", StringComparison.OrdinalIgnoreCase) == true) break;
+
+    if (!int.TryParse(startInput, out int start) ||
+        !int.TryParse(endInput, out int end))
+    {
+        Console.WriteLine("Ошибка: введите целые числа.");
+        continue;
+    }
+
+    if (!indexMap.ContainsKey(start) || !indexMap.ContainsKey(end))
+    {
+        Console.WriteLine("Ошибка: точка не найдена на карте.");
+        continue;
+    }
+
+    int idxStart = indexMap[start];
+    int idxEnd = indexMap[end];
+    double minDistance = distances[idxStart, idxEnd];
+
+    if (minDistance == double.PositiveInfinity)
+    {
+        Console.WriteLine($"Пути между {start} и {end} не существует.");
+        continue;
+    }
+
+    var pathIndices = ReconstructPath(idxStart, idxEnd, adjMatrix, distances);
+    if (pathIndices == null)
+    {
+        Console.WriteLine($"Не удалось восстановить путь (расстояние = {minDistance:F2}).");
+    }
+    else
+    {
+        var path = pathIndices.Select(idx => vertexByIndex[idx]).ToList();
+        Console.WriteLine($"Путь: {string.Join(" → ", path)}");
+        Console.WriteLine($"Длина: {minDistance:F2} единиц.");
+    }
+}
+
+static List<int>? ReconstructPath(int start, int end, double[,] adjMatrix, double[,] dist)
+{
+    if (start == end)
+        return new List<int> { start };
+
+    var path = new List<int>();
+    int current = start;
+    path.Add(current);
+
+    while (current != end)
+    {
+        int next = -1;
+        double bestReduction = double.NegativeInfinity;
+
+        for (int neighbor = 0; neighbor < GlobalN.n; neighbor++)
+        {
+            if (adjMatrix[current, neighbor] == double.PositiveInfinity)
+                continue;
+            if (neighbor == current)
+                continue;
+
+            double edgeCost = adjMatrix[current, neighbor];
+            double remaining = dist[neighbor, end];
+
+            double totalViaNeighbor = edgeCost + remaining;
+
+            if (Math.Abs(dist[current, end] - totalViaNeighbor) < 1e-9)
+            {
+                if (next == -1 || edgeCost < adjMatrix[current, next])
+                {
+                    next = neighbor;
+                    bestReduction = edgeCost;
+                }
+            }
+        }
+
+        if (next == -1)
+            return null;
+
+        path.Add(next);
+        current = next;
+    }
+
+    return path;
+}
